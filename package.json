@@ -1,0 +1,21 @@
+{
+  "name": "resilient-websocket",
+  "version": "1.0.0",
+  "description": "A client WebSocket wrapper with support for reconnection and connection pings",
+  "main": "./src/ResilientWebSocket.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/chai": "^4.1.7",
+    "@types/mocha": "^5.2.6",
+    "chai": "latest",
+    "mocha": "^6.0.2",
+    "testdouble": "^3.11.0",
+    "testdouble-timers": "^0.1.1",
+    "ts-node": "^8.0.3",
+    "typescript": "^3.3.3333"
+  }
+}
