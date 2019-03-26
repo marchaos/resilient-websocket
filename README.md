@@ -17,7 +17,7 @@ const opts = {
     pingEnabled: true // send ping / pong messages
 };
 
-const rSock = new ResilientWebSocket(url opts);
+const rSock = new ResilientWebSocket(url, opts);
 
 rSock.on('connection', () => {
     rSocket.on('message', (message) => {
