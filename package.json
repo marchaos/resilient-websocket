@@ -1,13 +1,22 @@
 {
   "name": "resilient-websocket",
   "version": "1.0.0",
-  "description": "A client WebSocket wrapper with support for reconnection and connection pings",
-  "main": "./src/ResilientWebSocket.ts",
+  "description": "A client WebSocket wrapper with support for reconnection and ping/pong",
+  "main": "dist/ResilientWebSocket.js",
+  "types": "dist/ResilientWebSocket.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "prepublish": "npm run build",
+    "build": "tsc",
+    "test": "mocha \"src/**/*spec.*s*\" --require ts-node/register --reporter dot"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "Marc McIntyre <marchaos@gmail.com>",
+  "license": "Apache-2.0",
+  "licenses": [
+    {
+      "type": "Apache-2.0",
+      "url": "http://www.apache.org/licenses/LICENSE-2.0"
+    }
+  ],
   "devDependencies": {
     "@types/chai": "^4.1.7",
     "@types/mocha": "^5.2.6",
