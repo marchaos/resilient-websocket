@@ -3,13 +3,13 @@ A client WebSocket wrapper with support for reconnection and ping/pong with a fa
 
 # Installing
 
-```
+```sh
 npm install resilient-websocket --save
 ```
 
 # API
 
-```
+```js
 import ResilientWebSocket from 'resilient-websocket';
 
 const opts = {
