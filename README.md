@@ -20,7 +20,7 @@ const opts = {
 const rSock = new ResilientWebSocket(url, opts);
 
 rSock.on('connection', () => {
-    rSocket.on('message', (message) => {
+    rSock.on('message', (message) => {
         console.info('recieved message from the server', message);
         rSock.send({ message: 'Right back at ya, buddy!' });
     });
