@@ -3,7 +3,6 @@ export interface OnCallback {
 }
 
 export interface ResilientWebSocketOptions {
-    url: string;
     autoJsonify?: boolean;
     autoConnect?: boolean;
     reconnectInterval?: number;
@@ -14,7 +13,7 @@ export interface ResilientWebSocketOptions {
     pongMessage?: string;
 }
 
-export const defaultOptions: Partial<ResilientWebSocketOptions> = {
+export const defaultOptions: ResilientWebSocketOptions = {
     autoJsonify: false,
     autoConnect: true,
     reconnectInterval: 1000,
@@ -33,13 +32,14 @@ export enum WebSocketEvents {
 }
 
 export interface WebSocketFactory {
-    (options: ResilientWebSocketOptions): WebSocket;
+    (url: string): WebSocket;
 }
 
-const WebSocketFactory: WebSocketFactory = (options: ResilientWebSocketOptions) =>
-    new WebSocket(options.url);
+const WebSocketFactory: WebSocketFactory = (url: string) =>
+    new WebSocket(url);
 
 class ResilientWebSocket {
+    private readonly url: string;
     private readonly options: ResilientWebSocketOptions;
     private readonly callbacks: Map<string, Set<OnCallback>> = new Map();
     private readonly wsFactory: WebSocketFactory;
@@ -48,9 +48,11 @@ class ResilientWebSocket {
     private pingInterval!: number;
 
     constructor(
+        url: string,
         options: ResilientWebSocketOptions,
         wsFactory: WebSocketFactory = WebSocketFactory
     ) {
+        this.url = url;
         this.options = { ...defaultOptions, ...options };
         this.wsFactory = wsFactory;
         if (this.options.autoConnect) {
@@ -59,7 +61,7 @@ class ResilientWebSocket {
     }
 
     public connect = () => {
-        const socket = this.wsFactory(this.options);
+        const socket = this.wsFactory(this.url);
 
         this.respondToCallbacks(WebSocketEvents.CONNECTING, this);
         socket.addEventListener('open', this.onOpen);

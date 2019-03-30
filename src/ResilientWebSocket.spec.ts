@@ -18,7 +18,6 @@ describe('ResilientWebSocket', () => {
 
     beforeEach(() => {
         options = {
-            url: 'ws://localhost',
         };
         websocketMock = td.object<WebSocket>();
         factory = () => websocketMock;
@@ -27,7 +26,14 @@ describe('ResilientWebSocket', () => {
         clock = td.timers();
     });
 
-    const createWebSocket = () => new ResilientWebSocket(options, factory);
+    const createWebSocket = () => new ResilientWebSocket('ws://localhost', options, factory);
+
+    it('factory passed url', () => {
+        factory = td.function<WebSocketFactory>();
+        td.when(factory('ws://localhost')).thenReturn(websocketMock);
+        const rSocket = createWebSocket();
+        rSocket.connect();
+    });
 
     it('notifies "connecting" event when websocket connecting', done => {
         options.autoConnect = false;
