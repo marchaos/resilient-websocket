@@ -1,12 +1,12 @@
 {
   "name": "resilient-websocket",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A client WebSocket wrapper with support for reconnection and ping/pong",
   "main": "dist/ResilientWebSocket.js",
   "types": "dist/ResilientWebSocket.d.ts",
   "scripts": {
     "prepublish": "npm run build",
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "test": "mocha \"src/**/*spec.*s*\" --require ts-node/register --reporter dot"
   },
   "author": "Marc McIntyre <marchaos@gmail.com>",
