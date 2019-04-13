@@ -9,8 +9,8 @@ export interface ResilientWebSocketOptions {
     pingEnabled?: boolean;
     pingInterval?: number;
     pongTimeout?: number;
-    pingMessage?: string;
-    pongMessage?: string;
+    pingMessage?: string | object;
+    pongMessage?: string | object;
 }
 
 export const defaultOptions: ResilientWebSocketOptions = {
@@ -45,7 +45,7 @@ class ResilientWebSocket {
     private readonly wsFactory: WebSocketFactory;
     private socket!: WebSocket;
     private pongTimeout!: number;
-    private pingInterval!: number;
+    private pingTimeout!: number;
 
     constructor(
         url: string,
@@ -97,13 +97,17 @@ class ResilientWebSocket {
         this.respondToCallbacks(WebSocketEvents.CONNECTION, this);
 
         if (this.options.pingEnabled) {
-            this.pingInterval = setInterval(() => {
-                this.socket.send(this.options.pingMessage as string);
-                this.pongTimeout = setTimeout(() => {
-                    this.pongTimedOut();
-                }, this.options.pongTimeout);
-            }, this.options.pingInterval);
+            this.sendPing();
         }
+    };
+
+    private sendPing = () => {
+        this.pingTimeout = setTimeout(() => {
+            this.send(this.options.pingMessage);
+            this.pongTimeout = setTimeout(() => {
+                this.pongTimedOut();
+            }, this.options.pongTimeout);
+        }, this.options.pingInterval);
     };
 
     private pongTimedOut = () => {
@@ -112,6 +116,7 @@ class ResilientWebSocket {
 
     private pongReceived = () => {
         clearTimeout(this.pongTimeout);
+        this.sendPing();
     };
 
     private onMessage = (event: MessageEvent) => {
@@ -130,7 +135,7 @@ class ResilientWebSocket {
 
     private onClose = (event: CloseEvent) => {
         this.respondToCallbacks(WebSocketEvents.CLOSE, event);
-        clearInterval(this.pingInterval);
+        clearInterval(this.pingTimeout);
         clearTimeout(this.pongTimeout);
 
         setTimeout(() => {

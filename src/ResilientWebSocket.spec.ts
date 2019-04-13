@@ -160,12 +160,25 @@ describe('ResilientWebSocket', () => {
         it('sends multiple pings', () => {
             options.pongTimeout = 500;
             const captor = td.matchers.captor();
+            const messageCaptor = td.matchers.captor();
             createWebSocket();
 
             td.verify(websocketMock.addEventListener('open', captor.capture()));
-            captor.value();
+            td.verify(
+                websocketMock.addEventListener(
+                    'message',
+                    messageCaptor.capture()
+                )
+            );
 
-            clock.tick(120);
+            captor.value();
+            // allow a ping to be sent
+            clock.tick(60);
+
+            messageCaptor.value({data: options.pongMessage});
+
+            // allow another ping to be sent
+            clock.tick(60);
 
             td.verify(websocketMock.send('PINGME'), { times: 2 });
         });
@@ -189,7 +202,7 @@ describe('ResilientWebSocket', () => {
             clock.tick(90);
 
             // pong back within another 50ms
-            messageCaptor.value(options.pingMessage);
+            messageCaptor.value({data: options.pongMessage});
 
             // we should still be open
             td.verify(websocketMock.close(), { times: 0 });
