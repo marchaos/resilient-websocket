@@ -2,15 +2,13 @@ import td from 'testdouble';
 // @ts-ignore
 import timers from 'testdouble-timers';
 
-import { expect } from 'chai';
-import ResilientWebSocket, {
-    ResilientWebSocketOptions,
-    WebSocketFactory,
-} from './ResilientWebSocket';
+import {expect} from 'chai';
+import ResilientWebSocket, {ResilientWebSocketOptions, WebSocketEvent, WebSocketFactory,} from './ResilientWebSocket';
 
 timers.use(td);
 
 describe('ResilientWebSocket', () => {
+    const url = 'ws://localhost';
     let options: ResilientWebSocketOptions;
     let factory: WebSocketFactory;
     let websocketMock: WebSocket;
@@ -20,13 +18,15 @@ describe('ResilientWebSocket', () => {
         options = {
         };
         websocketMock = td.object<WebSocket>();
-        factory = () => websocketMock;
+
+        factory = td.function<WebSocketFactory>();
+        td.when(factory(url)).thenReturn(websocketMock);
 
         // @ts-ignore
         clock = td.timers();
     });
 
-    const createWebSocket = () => new ResilientWebSocket('ws://localhost', options, factory);
+    const createWebSocket = () => new ResilientWebSocket(url, options, factory);
 
     it('factory passed url', () => {
         factory = td.function<WebSocketFactory>();
@@ -39,7 +39,7 @@ describe('ResilientWebSocket', () => {
         options.autoConnect = false;
         const rSocket = createWebSocket();
 
-        rSocket.on('connecting', () => {
+        rSocket.on(WebSocketEvent.CONNECTING, () => {
             done();
         });
 
@@ -50,7 +50,7 @@ describe('ResilientWebSocket', () => {
         const captor = td.matchers.captor();
         const rSocket = createWebSocket();
 
-        rSocket.on('connection', () => {
+        rSocket.on(WebSocketEvent.CONNECTION, () => {
             done();
         });
 
@@ -62,7 +62,7 @@ describe('ResilientWebSocket', () => {
         const captor = td.matchers.captor();
         const rSocket = createWebSocket();
 
-        rSocket.on('close', () => {
+        rSocket.on(WebSocketEvent.CLOSE, () => {
             done();
         });
 
@@ -85,14 +85,14 @@ describe('ResilientWebSocket', () => {
 
         let callCount = 0;
 
-        rSocket.on('connection', () => {
+        rSocket.on(WebSocketEvent.CONNECTION, () => {
             callCount++;
             if (callCount === 2) {
                 done();
             }
         });
 
-        rSocket.on('connection', () => {
+        rSocket.on(WebSocketEvent.CONNECTION, () => {
             callCount++;
             if (callCount === 2) {
                 done();
@@ -108,7 +108,7 @@ describe('ResilientWebSocket', () => {
             const captor = td.matchers.captor();
             const rSocket = createWebSocket();
 
-            rSocket.on('message', message => {
+            rSocket.on(WebSocketEvent.MESSAGE, message => {
                 expect(message).to.eq('my message');
                 done();
             });
@@ -124,7 +124,7 @@ describe('ResilientWebSocket', () => {
             const captor = td.matchers.captor();
             const rSocket = createWebSocket();
 
-            rSocket.on('message', message => {
+            rSocket.on(WebSocketEvent.MESSAGE, message => {
                 expect(message).to.deep.eq({ message: 'my message' });
                 done();
             });
@@ -208,6 +208,30 @@ describe('ResilientWebSocket', () => {
             td.verify(websocketMock.close(), { times: 0 });
         });
 
+        it('fires pong event when pong received', (done) => {
+            const openCaptor = td.matchers.captor();
+            const messageCaptor = td.matchers.captor();
+            const rSocket = createWebSocket();
+
+            rSocket.on(WebSocketEvent.PONG, () => {
+                done();
+            });
+
+            td.verify(
+                websocketMock.addEventListener('open', openCaptor.capture())
+            );
+            td.verify(
+                websocketMock.addEventListener(
+                    'message',
+                    messageCaptor.capture()
+                )
+            );
+            openCaptor.value();
+            clock.tick(90);
+
+            messageCaptor.value({data: options.pongMessage});
+        });
+
         it('times out and closes connection when pong not received', () => {
             const openCaptor = td.matchers.captor();
             const messageCaptor = td.matchers.captor();
@@ -231,10 +255,25 @@ describe('ResilientWebSocket', () => {
             td.verify(websocketMock.close(), { times: 1 });
         });
 
-        // no pings during close
+        //TODO: no pings during close
     });
 
     describe('reconnect', () => {
+        it('creates a new socket to reconnect when closed', () => {
+            const openCaptor = td.matchers.captor();
+            const closeCaptor = td.matchers.captor();
+            createWebSocket();
 
+            td.verify(websocketMock.addEventListener('open', openCaptor.capture()));
+            td.verify(websocketMock.addEventListener('close', closeCaptor.capture()));
+            // Ensure we are opened
+            openCaptor.value();
+            closeCaptor.value();
+
+            // Need to tick pass the reconnection interval
+            clock.tick(1200);
+
+            td.verify(factory(url), {times: 2});
+        });
     })
 });

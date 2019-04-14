@@ -24,11 +24,12 @@ export const defaultOptions: ResilientWebSocketOptions = {
     pongMessage: 'PONG',
 };
 
-export enum WebSocketEvents {
+export enum WebSocketEvent {
     CONNECTION = 'connection',
     MESSAGE = 'message',
     CONNECTING = 'connecting',
     CLOSE = 'close',
+    PONG = 'pong'
 }
 
 export interface WebSocketFactory {
@@ -63,7 +64,7 @@ class ResilientWebSocket {
     public connect = () => {
         const socket = this.wsFactory(this.url);
 
-        this.respondToCallbacks(WebSocketEvents.CONNECTING, this);
+        this.respondToCallbacks(WebSocketEvent.CONNECTING, this);
         socket.addEventListener('open', this.onOpen);
         socket.addEventListener('message', this.onMessage);
         socket.addEventListener('close', this.onClose);
@@ -77,7 +78,7 @@ class ResilientWebSocket {
         );
     };
 
-    public on = (event: string, callback: OnCallback) => {
+    public on = (event: WebSocketEvent, callback: OnCallback) => {
         let callbackList = this.callbacks.get(event);
         if (!callbackList) {
             callbackList = new Set();
@@ -86,7 +87,7 @@ class ResilientWebSocket {
         callbackList.add(callback);
     };
 
-    private respondToCallbacks = (event: WebSocketEvents, data: any) => {
+    private respondToCallbacks = (event: WebSocketEvent, data: any) => {
         const callbacks = this.callbacks.get(event);
         if (callbacks) {
             callbacks.forEach(callback => callback(data));
@@ -94,7 +95,7 @@ class ResilientWebSocket {
     };
 
     private onOpen = () => {
-        this.respondToCallbacks(WebSocketEvents.CONNECTION, this);
+        this.respondToCallbacks(WebSocketEvent.CONNECTION, this);
 
         if (this.options.pingEnabled) {
             this.sendPing();
@@ -116,6 +117,7 @@ class ResilientWebSocket {
 
     private pongReceived = () => {
         clearTimeout(this.pongTimeout);
+        this.respondToCallbacks(WebSocketEvent.PONG, this);
         this.sendPing();
     };
 
@@ -130,11 +132,11 @@ class ResilientWebSocket {
         const message = this.options.autoJsonify
             ? JSON.parse(event.data)
             : event.data;
-        this.respondToCallbacks(WebSocketEvents.MESSAGE, message);
+        this.respondToCallbacks(WebSocketEvent.MESSAGE, message);
     };
 
     private onClose = (event: CloseEvent) => {
-        this.respondToCallbacks(WebSocketEvents.CLOSE, event);
+        this.respondToCallbacks(WebSocketEvent.CLOSE, event);
         clearInterval(this.pingTimeout);
         clearTimeout(this.pongTimeout);
 

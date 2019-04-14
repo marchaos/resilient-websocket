@@ -10,7 +10,7 @@ npm install resilient-websocket --save
 # API
 
 ```js
-import ResilientWebSocket from 'resilient-websocket';
+import ResilientWebSocket, { WebSocketEvent } from 'resilient-websocket';
 
 const opts = {
     autoJsonify: true, // parse json message from server, stringify messages on send,
@@ -19,9 +19,9 @@ const opts = {
 
 const rSock = new ResilientWebSocket(url, opts);
 
-rSock.on('connection', () => {
-    rSock.on('message', (message) => {
-        console.info('recieved message from the server', message);
+rSock.on(WebSocketEvent.CONNECTION, () => {
+    rSock.on(WebSocketEvent.MESSAGE, (message) => {
+        console.info('received message from the server', message);
         rSock.send({ message: 'Right back at ya, buddy!' });
     });
 });
