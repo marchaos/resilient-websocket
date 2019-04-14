@@ -29,15 +29,14 @@ export enum WebSocketEvent {
     MESSAGE = 'message',
     CONNECTING = 'connecting',
     CLOSE = 'close',
-    PONG = 'pong'
+    PONG = 'pong',
 }
 
 export interface WebSocketFactory {
     (url: string): WebSocket;
 }
 
-const WebSocketFactory: WebSocketFactory = (url: string) =>
-    new WebSocket(url);
+const WebSocketFactory: WebSocketFactory = (url: string) => new WebSocket(url);
 
 class ResilientWebSocket {
     private readonly url: string;
