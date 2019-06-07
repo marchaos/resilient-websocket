@@ -11,6 +11,7 @@ export interface ResilientWebSocketOptions {
     pongTimeout?: number;
     pingMessage?: string | object;
     pongMessage?: string | object;
+    reconnectOnError?: boolean;
 }
 
 export const defaultOptions: ResilientWebSocketOptions = {
@@ -22,6 +23,7 @@ export const defaultOptions: ResilientWebSocketOptions = {
     pongTimeout: 5000,
     pingMessage: 'PING',
     pongMessage: 'PONG',
+    reconnectOnError: true
 };
 
 export enum WebSocketEvent {
@@ -30,6 +32,7 @@ export enum WebSocketEvent {
     CONNECTING = 'connecting',
     CLOSE = 'close',
     PONG = 'pong',
+    ERROR = 'error',
 }
 
 export interface WebSocketFactory {
@@ -67,6 +70,7 @@ class ResilientWebSocket {
         socket.addEventListener('open', this.onOpen);
         socket.addEventListener('message', this.onMessage);
         socket.addEventListener('close', this.onClose);
+        socket.addEventListener('error', this.onError);
 
         return socket;
     };
@@ -134,7 +138,7 @@ class ResilientWebSocket {
         this.respondToCallbacks(WebSocketEvent.MESSAGE, message);
     };
 
-    private onClose = (event: CloseEvent) => {
+    private onClose = (event?: CloseEvent) => {
         this.respondToCallbacks(WebSocketEvent.CLOSE, event);
         clearInterval(this.pingTimeout);
         clearTimeout(this.pongTimeout);
@@ -142,6 +146,14 @@ class ResilientWebSocket {
         setTimeout(() => {
             this.socket = this.connect();
         }, this.options.reconnectInterval);
+    };
+
+    private onError = () => {
+        this.respondToCallbacks(WebSocketEvent.ERROR, this);
+
+        if (this.options.reconnectOnError) {
+            this.onClose();
+        }
     };
 }
 
