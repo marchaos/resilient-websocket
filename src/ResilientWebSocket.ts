@@ -81,6 +81,16 @@ class ResilientWebSocket {
         );
     };
 
+    public close = () => {
+        clearTimeout(this.pongTimeout);
+        clearInterval(this.pingTimeout);
+        this.socket.removeEventListener('open', this.onOpen);
+        this.socket.removeEventListener('message', this.onMessage);
+        this.socket.removeEventListener('close', this.onClose);
+        this.socket.removeEventListener('error', this.onError);
+        this.socket.close();
+    };
+
     public on = (event: WebSocketEvent, callback: OnCallback) => {
         let callbackList = this.callbacks.get(event);
         if (!callbackList) {
