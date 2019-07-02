@@ -106,6 +106,23 @@ describe('ResilientWebSocket', () => {
         captor.value();
     });
 
+    it('supports removing callbacks', done => {
+        const captor = td.matchers.captor();
+        const rSocket = createWebSocket();
+        const cb1 = () => done(new Error('cb1 should not be called!'));
+        const cb2 = () => {
+            done();
+        };
+
+        rSocket.on(WebSocketEvent.CONNECTION, cb1);
+        rSocket.on(WebSocketEvent.CONNECTION, cb2);
+
+        rSocket.off(WebSocketEvent.CONNECTION, cb1);
+
+        td.verify(websocketMock.addEventListener('open', captor.capture()));
+        captor.value();
+    });
+
     describe('onMessage', () => {
         it('notifies "message" event when websocket receives a message', done => {
             const captor = td.matchers.captor();

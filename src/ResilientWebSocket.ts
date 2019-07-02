@@ -100,6 +100,13 @@ class ResilientWebSocket {
         callbackList.add(callback);
     };
 
+    public off = (event: WebSocketEvent, callback: OnCallback) => {
+        let callbackList = this.callbacks.get(event);
+        if (callbackList) {
+            callbackList.delete(callback);
+        }
+    };
+
     private respondToCallbacks = (event: WebSocketEvent, data: any) => {
         const callbacks = this.callbacks.get(event);
         if (callbacks) {
