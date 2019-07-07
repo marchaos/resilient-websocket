@@ -84,11 +84,12 @@ class ResilientWebSocket {
     public close = () => {
         clearTimeout(this.pongTimeout);
         clearInterval(this.pingTimeout);
-        this.socket.removeEventListener('open', this.onOpen);
-        this.socket.removeEventListener('message', this.onMessage);
-        this.socket.removeEventListener('close', this.onClose);
         this.socket.removeEventListener('error', this.onError);
+        this.socket.removeEventListener('message', this.onMessage);
+        this.socket.removeEventListener('open', this.onOpen);
         this.socket.close();
+        // Allow this to fire first
+        this.socket.removeEventListener('close', this.onClose);
     };
 
     public on = (event: WebSocketEvent, callback: OnCallback) => {
@@ -108,6 +109,7 @@ class ResilientWebSocket {
     };
 
     private onOpen = () => {
+        console.info('onOpen');
         this.respondToCallbacks(WebSocketEvent.CONNECTION, this);
 
         if (this.options.pingEnabled) {
