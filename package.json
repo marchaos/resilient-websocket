@@ -1,6 +1,6 @@
 {
   "name": "resilient-websocket",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "A client WebSocket wrapper with support for reconnection and ping/pong",
   "main": "dist/ResilientWebSocket.js",
   "types": "dist/ResilientWebSocket.d.ts",

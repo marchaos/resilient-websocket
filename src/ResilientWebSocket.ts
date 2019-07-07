@@ -82,14 +82,18 @@ class ResilientWebSocket {
     };
 
     public close = () => {
+        this.socket.close();
+        this.respondToCallbacks(WebSocketEvent.CLOSE, this);
+        this.cleanup();
+    };
+
+    private cleanup = () => {
         clearTimeout(this.pongTimeout);
         clearInterval(this.pingTimeout);
         this.socket.removeEventListener('error', this.onError);
         this.socket.removeEventListener('message', this.onMessage);
         this.socket.removeEventListener('open', this.onOpen);
         this.socket.removeEventListener('close', this.onClose);
-        this.socket.close();
-        this.respondToCallbacks(WebSocketEvent.CLOSE, this);
     };
 
     public on = (event: WebSocketEvent, callback: OnCallback) => {
@@ -158,13 +162,13 @@ class ResilientWebSocket {
     };
 
     private onClose = (event?: CloseEvent) => {
+        this.cleanup();
         this.respondToCallbacks(WebSocketEvent.CLOSE, event);
-        clearInterval(this.pingTimeout);
-        clearTimeout(this.pongTimeout);
 
         setTimeout(() => {
             this.socket = this.connect();
         }, this.options.reconnectInterval);
+
     };
 
     private onError = () => {
