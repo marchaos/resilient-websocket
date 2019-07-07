@@ -89,7 +89,7 @@ class ResilientWebSocket {
         this.socket.removeEventListener('open', this.onOpen);
         this.socket.removeEventListener('close', this.onClose);
         this.socket.close();
-        this.respondToCallbacks(WebSocketEvent.CLOSE, event);
+        this.respondToCallbacks(WebSocketEvent.CLOSE, this);
     };
 
     public on = (event: WebSocketEvent, callback: OnCallback) => {
