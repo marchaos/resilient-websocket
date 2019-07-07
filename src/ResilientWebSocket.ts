@@ -87,9 +87,9 @@ class ResilientWebSocket {
         this.socket.removeEventListener('error', this.onError);
         this.socket.removeEventListener('message', this.onMessage);
         this.socket.removeEventListener('open', this.onOpen);
-        this.socket.close();
-        // Allow this to fire first
         this.socket.removeEventListener('close', this.onClose);
+        this.socket.close();
+        this.respondToCallbacks(WebSocketEvent.CLOSE, event);
     };
 
     public on = (event: WebSocketEvent, callback: OnCallback) => {
