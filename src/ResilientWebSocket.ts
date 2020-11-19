@@ -120,7 +120,6 @@ class ResilientWebSocket {
     };
 
     private onOpen = () => {
-        console.info('onOpen');
         this.respondToCallbacks(WebSocketEvent.CONNECTION, this);
 
         if (this.options.pingEnabled) {
