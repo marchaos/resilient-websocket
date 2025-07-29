@@ -1,76 +1,96 @@
-import td from 'testdouble';
-// @ts-ignore
-import timers from 'testdouble-timers';
-
-import { expect } from 'chai';
 import ResilientWebSocket, {
     ResilientWebSocketOptions,
     WebSocketEvent,
     WebSocketFactory,
 } from './ResilientWebSocket';
 
-timers.use(td);
-
 describe('ResilientWebSocket', () => {
     const url = 'ws://localhost';
     let options: ResilientWebSocketOptions;
     let factory: WebSocketFactory;
-    let websocketMock: WebSocket;
-    let clock: any;
+    let websocketMock: jest.Mocked<WebSocket>;
 
     beforeEach(() => {
+        jest.useFakeTimers();
         options = {};
-        websocketMock = td.object<WebSocket>();
 
-        factory = td.function<WebSocketFactory>();
-        td.when(factory(url)).thenReturn(websocketMock);
+        websocketMock = {
+            addEventListener: jest.fn(),
+            removeEventListener: jest.fn(),
+            send: jest.fn(),
+            close: jest.fn(),
+            readyState: WebSocket.CONNECTING,
+            url: '',
+            protocol: '',
+            extensions: '',
+            bufferedAmount: 0,
+            binaryType: 'blob',
+            onopen: null,
+            onclose: null,
+            onerror: null,
+            onmessage: null,
+            dispatchEvent: jest.fn(),
+            CONNECTING: WebSocket.CONNECTING,
+            OPEN: WebSocket.OPEN,
+            CLOSING: WebSocket.CLOSING,
+            CLOSED: WebSocket.CLOSED
+        } as jest.Mocked<WebSocket>;
 
-        // @ts-ignore
-        clock = td.timers();
+        factory = jest.fn().mockReturnValue(websocketMock);
+    });
+
+    afterEach(() => {
+        jest.useRealTimers();
     });
 
     const createWebSocket = () => new ResilientWebSocket(url, options, factory);
 
     it('factory passed url', () => {
-        factory = td.function<WebSocketFactory>();
-        td.when(factory('ws://localhost')).thenReturn(websocketMock);
-        const rSocket = createWebSocket();
+        factory = jest.fn().mockReturnValue(websocketMock);
+        const rSocket = new ResilientWebSocket(url, options, factory);
         rSocket.connect();
+        expect(factory).toHaveBeenCalledWith('ws://localhost');
     });
 
-    it('notifies "connecting" event when websocket connecting', done => {
-        options.autoConnect = false;
-        const rSocket = createWebSocket();
+    it('notifies "connecting" event when websocket connecting', () => {
+        return new Promise<void>((resolve) => {
+            options.autoConnect = false;
+            const rSocket = createWebSocket();
 
-        rSocket.on(WebSocketEvent.CONNECTING, () => {
-            done();
+            rSocket.on(WebSocketEvent.CONNECTING, () => {
+                resolve();
+            });
+
+            rSocket.connect();
         });
-
-        rSocket.connect();
     });
 
-    it('notifies "connection" event when websocket connected', done => {
-        const captor = td.matchers.captor();
-        const rSocket = createWebSocket();
+    it('notifies "connection" event when websocket connected', () => {
+        return new Promise<void>((resolve) => {
+            const rSocket = createWebSocket();
 
-        rSocket.on(WebSocketEvent.CONNECTION, () => {
-            done();
+            rSocket.on(WebSocketEvent.CONNECTION, () => {
+                resolve();
+            });
+
+            expect(websocketMock.addEventListener).toHaveBeenCalledWith('open', expect.any(Function));
+            const openCallback = (websocketMock.addEventListener as jest.Mock).mock.calls.find(call => call[0] === 'open')[1];
+            openCallback();
         });
-
-        td.verify(websocketMock.addEventListener('open', captor.capture()));
-        captor.value();
     });
 
-    it('notifies "close" event when websocket disconnects', done => {
-        const captor = td.matchers.captor();
-        const rSocket = createWebSocket();
+    it('notifies "close" event when websocket disconnects', () => {
+        return new Promise<void>((resolve) => {
+            const rSocket = createWebSocket();
 
-        rSocket.on(WebSocketEvent.CLOSE, () => {
-            done();
+            rSocket.on(WebSocketEvent.CLOSE, () => {
+                resolve();
+            });
+
+            expect(websocketMock.addEventListener).toHaveBeenCalledWith('close', expect.any(Function));
+            const closeCallback = (websocketMock.addEventListener as jest.Mock).mock.calls.find(call => call[0] === 'close')[1];
+            closeCallback();
         });
-
-        td.verify(websocketMock.addEventListener('close', captor.capture()));
-        captor.value();
     });
 
     it('automatically stringifies message when autoJsonify is true', () => {
@@ -79,80 +99,84 @@ describe('ResilientWebSocket', () => {
 
         rSocket.send({ message: 'yo' });
 
-        td.verify(websocketMock.send('{"message":"yo"}'));
+        expect(websocketMock.send).toHaveBeenCalledWith('{"message":"yo"}');
     });
 
-    it('supports multiple callbacks', done => {
-        const captor = td.matchers.captor();
-        const rSocket = createWebSocket();
+    it('supports multiple callbacks', () => {
+        return new Promise<void>((resolve) => {
+            const rSocket = createWebSocket();
 
-        let callCount = 0;
+            let callCount = 0;
 
-        rSocket.on(WebSocketEvent.CONNECTION, () => {
-            callCount++;
-            if (callCount === 2) {
-                done();
-            }
+            rSocket.on(WebSocketEvent.CONNECTION, () => {
+                callCount++;
+                if (callCount === 2) {
+                    resolve();
+                }
+            });
+
+            rSocket.on(WebSocketEvent.CONNECTION, () => {
+                callCount++;
+                if (callCount === 2) {
+                    resolve();
+                }
+            });
+
+            expect(websocketMock.addEventListener).toHaveBeenCalledWith('open', expect.any(Function));
+            const openCallback = (websocketMock.addEventListener as jest.Mock).mock.calls.find(call => call[0] === 'open')[1];
+            openCallback();
         });
-
-        rSocket.on(WebSocketEvent.CONNECTION, () => {
-            callCount++;
-            if (callCount === 2) {
-                done();
-            }
-        });
-
-        td.verify(websocketMock.addEventListener('open', captor.capture()));
-        captor.value();
     });
 
-    it('supports removing callbacks', done => {
-        const captor = td.matchers.captor();
-        const rSocket = createWebSocket();
-        const cb1 = () => done(new Error('cb1 should not be called!'));
-        const cb2 = () => {
-            done();
-        };
+    it('supports removing callbacks', () => {
+        return new Promise<void>((resolve, reject) => {
+            const rSocket = createWebSocket();
+            const cb1 = () => reject(new Error('cb1 should not be called!'));
+            const cb2 = () => {
+                resolve();
+            };
 
-        rSocket.on(WebSocketEvent.CONNECTION, cb1);
-        rSocket.on(WebSocketEvent.CONNECTION, cb2);
+            rSocket.on(WebSocketEvent.CONNECTION, cb1);
+            rSocket.on(WebSocketEvent.CONNECTION, cb2);
 
-        rSocket.off(WebSocketEvent.CONNECTION, cb1);
+            rSocket.off(WebSocketEvent.CONNECTION, cb1);
 
-        td.verify(websocketMock.addEventListener('open', captor.capture()));
-        captor.value();
+            expect(websocketMock.addEventListener).toHaveBeenCalledWith('open', expect.any(Function));
+            const openCallback = (websocketMock.addEventListener as jest.Mock).mock.calls.find(call => call[0] === 'open')[1];
+            openCallback();
+        });
     });
 
     describe('onMessage', () => {
-        it('notifies "message" event when websocket receives a message', done => {
-            const captor = td.matchers.captor();
-            const rSocket = createWebSocket();
+        it('notifies "message" event when websocket receives a message', () => {
+            return new Promise<void>((resolve) => {
+                const rSocket = createWebSocket();
 
-            rSocket.on(WebSocketEvent.MESSAGE, message => {
-                expect(message).to.eq('my message');
-                done();
+                rSocket.on(WebSocketEvent.MESSAGE, message => {
+                    expect(message).toBe('my message');
+                    resolve();
+                });
+
+                expect(websocketMock.addEventListener).toHaveBeenCalledWith('message', expect.any(Function));
+                const messageCallback = (websocketMock.addEventListener as jest.Mock).mock.calls.find(call => call[0] === 'message')[1];
+                messageCallback({ data: 'my message' });
             });
-
-            td.verify(
-                websocketMock.addEventListener('message', captor.capture())
-            );
-            captor.value({ data: 'my message' });
         });
 
-        it('parses json string and calls with object if autoJsonify is true', done => {
-            options.autoJsonify = true;
-            const captor = td.matchers.captor();
-            const rSocket = createWebSocket();
+        it('parses json string and calls with object if autoJsonify is true', () => {
+            return new Promise<void>((resolve) => {
+                options.autoJsonify = true;
+                const rSocket = createWebSocket();
 
-            rSocket.on(WebSocketEvent.MESSAGE, message => {
-                expect(message).to.deep.eq({ message: 'my message' });
-                done();
+                rSocket.on(WebSocketEvent.MESSAGE, message => {
+                    expect(message).toEqual({ message: 'my message' });
+                    resolve();
+                });
+
+                expect(websocketMock.addEventListener).toHaveBeenCalledWith('message', expect.any(Function));
+                const messageCallback = (websocketMock.addEventListener as jest.Mock).mock.calls.find(call => call[0] === 'message')[1];
+                messageCallback({ data: '{"message": "my message"}' });
             });
-
-            td.verify(
-                websocketMock.addEventListener('message', captor.capture())
-            );
-            captor.value({ data: '{"message": "my message"}' });
         });
     });
 
@@ -166,113 +190,97 @@ describe('ResilientWebSocket', () => {
         });
 
         it('sends a ping once connected', () => {
-            const captor = td.matchers.captor();
             createWebSocket();
 
-            td.verify(websocketMock.addEventListener('open', captor.capture()));
-            captor.value();
+            expect(websocketMock.addEventListener).toHaveBeenCalledWith('open', expect.any(Function));
+            const openCallback = (websocketMock.addEventListener as jest.Mock).mock.calls.find(call => call[0] === 'open')[1];
+            openCallback();
 
-            clock.tick(60);
+            jest.advanceTimersByTime(60);
 
-            td.verify(websocketMock.send('PINGME'), { times: 1 });
+            expect(websocketMock.send).toHaveBeenCalledWith('PINGME');
+            expect(websocketMock.send).toHaveBeenCalledTimes(1);
         });
 
         it('sends multiple pings', () => {
             options.pongTimeout = 500;
-            const captor = td.matchers.captor();
-            const messageCaptor = td.matchers.captor();
             createWebSocket();
 
-            td.verify(websocketMock.addEventListener('open', captor.capture()));
-            td.verify(
-                websocketMock.addEventListener(
-                    'message',
-                    messageCaptor.capture()
-                )
-            );
+            expect(websocketMock.addEventListener).toHaveBeenCalledWith('open', expect.any(Function));
+            expect(websocketMock.addEventListener).toHaveBeenCalledWith('message', expect.any(Function));
 
-            captor.value();
+            const openCallback = (websocketMock.addEventListener as jest.Mock).mock.calls.find(call => call[0] === 'open')[1];
+            const messageCallback = (websocketMock.addEventListener as jest.Mock).mock.calls.find(call => call[0] === 'message')[1];
+
+            openCallback();
             // allow a ping to be sent
-            clock.tick(60);
+            jest.advanceTimersByTime(60);
 
-            messageCaptor.value({ data: options.pongMessage });
+            messageCallback({ data: options.pongMessage });
 
             // allow another ping to be sent
-            clock.tick(60);
+            jest.advanceTimersByTime(60);
 
-            td.verify(websocketMock.send('PINGME'), { times: 2 });
+            expect(websocketMock.send).toHaveBeenCalledWith('PINGME');
+            expect(websocketMock.send).toHaveBeenCalledTimes(2);
         });
 
         it('does not timeout when pong received', () => {
-            const openCaptor = td.matchers.captor();
-            const messageCaptor = td.matchers.captor();
             createWebSocket();
 
-            td.verify(
-                websocketMock.addEventListener('open', openCaptor.capture())
-            );
-            td.verify(
-                websocketMock.addEventListener(
-                    'message',
-                    messageCaptor.capture()
-                )
-            );
+            expect(websocketMock.addEventListener).toHaveBeenCalledWith('open', expect.any(Function));
+            expect(websocketMock.addEventListener).toHaveBeenCalledWith('message', expect.any(Function));
+
+            const openCallback = (websocketMock.addEventListener as jest.Mock).mock.calls.find(call => call[0] === 'open')[1];
+            const messageCallback = (websocketMock.addEventListener as jest.Mock).mock.calls.find(call => call[0] === 'message')[1];
+
             // call open which will send a ping after 50ms
-            openCaptor.value();
-            clock.tick(90);
+            openCallback();
+            jest.advanceTimersByTime(90);
 
             // pong back within another 50ms
-            messageCaptor.value({ data: options.pongMessage });
+            messageCallback({ data: options.pongMessage });
 
             // we should still be open
-            td.verify(websocketMock.close(), { times: 0 });
+            expect(websocketMock.close).not.toHaveBeenCalled();
         });
 
-        it('fires pong event when pong received', done => {
-            const openCaptor = td.matchers.captor();
-            const messageCaptor = td.matchers.captor();
-            const rSocket = createWebSocket();
+        it('fires pong event when pong received', () => {
+            return new Promise<void>((resolve) => {
+                const rSocket = createWebSocket();
 
-            rSocket.on(WebSocketEvent.PONG, () => {
-                done();
+                rSocket.on(WebSocketEvent.PONG, () => {
+                    resolve();
+                });
+
+                expect(websocketMock.addEventListener).toHaveBeenCalledWith('open', expect.any(Function));
+                expect(websocketMock.addEventListener).toHaveBeenCalledWith('message', expect.any(Function));
+
+                const openCallback = (websocketMock.addEventListener as jest.Mock).mock.calls.find(call => call[0] === 'open')[1];
+                const messageCallback = (websocketMock.addEventListener as jest.Mock).mock.calls.find(call => call[0] === 'message')[1];
+
+                openCallback();
+                jest.advanceTimersByTime(90);
+
+                messageCallback({ data: options.pongMessage });
             });
-
-            td.verify(
-                websocketMock.addEventListener('open', openCaptor.capture())
-            );
-            td.verify(
-                websocketMock.addEventListener(
-                    'message',
-                    messageCaptor.capture()
-                )
-            );
-            openCaptor.value();
-            clock.tick(90);
-
-            messageCaptor.value({ data: options.pongMessage });
         });
 
         it('times out and closes connection when pong not received', () => {
-            const openCaptor = td.matchers.captor();
-            const messageCaptor = td.matchers.captor();
             createWebSocket();
 
-            td.verify(
-                websocketMock.addEventListener('open', openCaptor.capture())
-            );
-            td.verify(
-                websocketMock.addEventListener(
-                    'message',
-                    messageCaptor.capture()
-                )
-            );
+            expect(websocketMock.addEventListener).toHaveBeenCalledWith('open', expect.any(Function));
+            expect(websocketMock.addEventListener).toHaveBeenCalledWith('message', expect.any(Function));
+
+            const openCallback = (websocketMock.addEventListener as jest.Mock).mock.calls.find(call => call[0] === 'open')[1];
+
             // call open which will send a ping after 50ms
-            openCaptor.value();
-            clock.tick(120);
-            // no ping
+            openCallback();
+            jest.advanceTimersByTime(120);
+            // no pong
 
             // closed should have been called
-            td.verify(websocketMock.close(), { times: 1 });
+            expect(websocketMock.close).toHaveBeenCalledTimes(1);
         });
 
         //TODO: no pings during close
@@ -280,24 +288,23 @@ describe('ResilientWebSocket', () => {
 
     describe('reconnect', () => {
         it('creates a new socket to reconnect when closed', () => {
-            const openCaptor = td.matchers.captor();
-            const closeCaptor = td.matchers.captor();
             createWebSocket();
 
-            td.verify(
-                websocketMock.addEventListener('open', openCaptor.capture())
-            );
-            td.verify(
-                websocketMock.addEventListener('close', closeCaptor.capture())
-            );
+            expect(websocketMock.addEventListener).toHaveBeenCalledWith('open', expect.any(Function));
+            expect(websocketMock.addEventListener).toHaveBeenCalledWith('close', expect.any(Function));
+
+            const openCallback = (websocketMock.addEventListener as jest.Mock).mock.calls.find(call => call[0] === 'open')[1];
+            const closeCallback = (websocketMock.addEventListener as jest.Mock).mock.calls.find(call => call[0] === 'close')[1];
+
             // Ensure we are opened
-            openCaptor.value();
-            closeCaptor.value();
+            openCallback();
+            closeCallback();
 
             // Need to tick pass the reconnection interval
-            clock.tick(1200);
+            jest.advanceTimersByTime(1200);
 
-            td.verify(factory(url), { times: 2 });
+            expect(factory).toHaveBeenCalledTimes(2);
+            expect(factory).toHaveBeenCalledWith(url);
         });
     });
 });

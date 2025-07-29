@@ -128,9 +128,9 @@ class ResilientWebSocket {
     };
 
     private sendPing = () => {
-        this.pingTimeout = setTimeout(() => {
+        this.pingTimeout = window.setTimeout(() => {
             this.send(this.options.pingMessage);
-            this.pongTimeout = setTimeout(() => {
+            this.pongTimeout = window.setTimeout(() => {
                 this.pongTimedOut();
             }, this.options.pongTimeout);
         }, this.options.pingInterval);
